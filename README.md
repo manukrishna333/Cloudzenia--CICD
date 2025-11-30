@@ -67,25 +67,6 @@ git push origin main
    - Build job builds and pushes Docker image
    - Deploy job updates ECS service
 
-## Project Structure
-
-```
-.
-├── app/
-│   ├── main.py              # Flask app
-│   └── requirements.txt     # Python dependencies
-├── Dockerfile               # Container build
-├── terraform/
-│   ├── main.tf             # Provider config
-│   ├── variables.tf        # Variables
-│   ├── vpc.tf              # VPC setup
-│   ├── ecr.tf              # ECR repository
-│   ├── ecs.tf              # ECS cluster/service
-│   └── iam.tf              # IAM roles
-└── .github/workflows/
-    └── deploy.yml          # CI/CD pipeline
-```
-
 ## Local Testing
 
 **Run Flask app:**
@@ -119,6 +100,52 @@ terraform apply
 # Destroy everything
 terraform destroy
 ```
+
+## Destroy Infrastructure
+
+After testing, you can destroy all infrastructure to avoid costs.
+
+### Option 1: Using GitHub Actions (Recommended)
+
+1. Go to your GitHub repository
+2. Click on **Actions** tab
+3. Select **Destroy Infrastructure** workflow from the left sidebar
+4. Click **Run workflow** button
+5. Select branch: `main`
+6. Click **Run workflow** to confirm
+7. Wait for the workflow to complete
+
+This will destroy all AWS resources created by Terraform.
+
+### Option 2: Using Local Terraform
+
+```bash
+cd terraform
+
+# Initialize (if not done already)
+terraform init
+
+# Preview what will be destroyed
+terraform plan -destroy
+
+# Destroy infrastructure
+terraform destroy
+```
+
+When prompted, type `yes` to confirm destruction.
+
+### What Gets Destroyed
+
+- VPC and subnets
+- Internet Gateway
+- Security Groups
+- ECR repository (and all Docker images)
+- ECS cluster and service
+- ECS task definitions
+- IAM roles
+- CloudWatch log groups
+
+**Note:** This will permanently delete all resources. Make sure you don't need them anymore.
 
 ## Access Your Service
 
@@ -178,15 +205,5 @@ Edit `terraform/variables.tf` to change:
 - Security groups
 - CloudWatch log group
 
-## Costs
 
-- NAT Gateway: ~$32/month
-- ECS Fargate: Pay per use (~$0.04/vCPU-hour, ~$0.004/GB-hour)
-- ECR storage: Minimal
-- CloudWatch logs: Minimal
-
-To reduce costs, destroy infrastructure when not in use:
-```bash
-cd terraform
-terraform destroy
-```
+To reduce costs, destroy infrastructure when not in use. See the **Destroy Infrastructure** section above for detailed instructions.

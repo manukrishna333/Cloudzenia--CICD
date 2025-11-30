@@ -56,12 +56,12 @@ cd app
 pip install -r requirements.txt
 python main.py
 ```
-Visit: http://localhost:5000
+Visit: http://localhost:80
 
 **Build Docker image:**
 ```bash
 docker build -t microservice-app .
-docker run -p 5000:5000 microservice-app
+docker run -p 80:80 microservice-app
 ```
 
 ## Terraform Commands
@@ -77,26 +77,20 @@ terraform destroy   # Delete infrastructure
 
 ## Access Your Service
 
-**Using check script:**
-```bash
-cd terraform
-./check-deployment.sh
-```
-
-**Manual check:**
+**Get public IP:**
 ```bash
 # Get public IP
 TASK_ARN=$(aws ecs list-tasks --cluster microservice-dev-cluster --region ap-south-1 --query 'taskArns[0]' --output text)
 ENI_ID=$(aws ecs describe-tasks --cluster microservice-dev-cluster --tasks $TASK_ARN --region ap-south-1 --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' --output text)
 PUBLIC_IP=$(aws ec2 describe-network-interfaces --network-interface-ids $ENI_ID --region ap-south-1 --query 'NetworkInterfaces[0].Association.PublicIp' --output text)
-echo "Access at: http://$PUBLIC_IP:5000"
+echo "Access at: http://$PUBLIC_IP"
 ```
 
 **Via AWS Console:**
 1. ECS → Clusters → `microservice-dev-cluster`
 2. Services → `microservice-dev-service`
 3. Tasks → Running task → Network tab → Public IP
-4. Visit: `http://<public-ip>:5000`
+4. Visit: `http://<public-ip>`
 
 ## Destroy Infrastructure
 
@@ -115,7 +109,7 @@ terraform destroy
 **Can't access application:**
 - Check task is running: `aws ecs describe-services --cluster microservice-dev-cluster --services microservice-dev-service --region ap-south-1`
 - Check logs: `aws logs tail /ecs/microservice-dev-app --follow --region ap-south-1`
-- Verify security group allows port 5000
+- Verify security group allows port 80
 - Ensure task has public IP assigned
 
 **Resource already exists error:**
@@ -134,7 +128,7 @@ Edit `terraform/variables.tf` to customize:
 - Project name (default: microservice)
 - Environment (default: dev)
 - VPC CIDR (default: 30.0.0.0/16)
-- Container port (default: 5000)
+- Container port (default: 80)
 - ECS task CPU/memory
 - Service desired count
 

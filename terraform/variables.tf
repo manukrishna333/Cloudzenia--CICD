@@ -25,7 +25,7 @@ variable "vpc_cidr" {
 variable "container_port" {
   description = "Port on which the container listens"
   type        = number
-  default     = 5000
+  default     = 80
 }
 
 variable "ecs_task_cpu" {

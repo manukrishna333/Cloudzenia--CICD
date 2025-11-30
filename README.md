@@ -274,3 +274,4 @@ Edit `terraform/variables.tf` to change:
 
 
 To reduce costs, destroy infrastructure when not in use. See the **Destroy Infrastructure** section above for detailed instructions.
+

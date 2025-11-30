@@ -38,6 +38,12 @@ jobs:
       - name: Terraform Destroy
         run: terraform destroy -auto-approve
         working-directory: terraform
+        continue-on-error: true
+
+      - name: Delete ECR Repository
+        run: |
+          echo "Deleting ECR repository..."
+          aws ecr delete-repository --repository-name microservice-dev-app --force --region ap-south-1 2>/dev/null && echo "ECR repository deleted" || echo "ECR repository not found or already deleted"
 
       - name: Destroy Complete
         run: echo "Infrastructure destroyed successfully"

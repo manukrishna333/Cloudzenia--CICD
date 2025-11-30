@@ -1,11 +1,11 @@
 output "ecr_repository_url" {
   description = "URL of the ECR repository"
-  value       = local.ecr_repository_url
+  value       = aws_ecr_repository.app.repository_url
 }
 
 output "ecr_repository_name" {
   description = "Name of the ECR repository"
-  value       = local.ecr_repository_name
+  value       = aws_ecr_repository.app.name
 }
 
 output "ecs_cluster_name" {

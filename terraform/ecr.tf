@@ -12,7 +12,7 @@ resource "aws_ecr_repository" "app" {
 }
 
 resource "aws_ecr_lifecycle_policy" "app" {
-  repository = aws_ecr_repository.app.name
+  repository = local.ecr_repository_name
 
   policy = jsonencode({
     rules = [

@@ -64,6 +64,10 @@ jobs:
     name: Create/Update Infrastructure
     runs-on: ubuntu-latest
     needs: [check-changes, check-infrastructure]
+    if: |
+      needs.check-changes.outputs.terraform == 'true' ||
+      needs.check-infrastructure.outputs.exists == 'false' ||
+      github.event_name == 'workflow_dispatch'
     permissions:
       contents: read
       id-token: write
@@ -146,9 +150,29 @@ jobs:
         run: terraform plan -out=tfplan
         working-directory: terraform
 
+      - name: Check if ECR exists
+        if: steps.should-run.outputs.run == 'true' && github.ref == 'refs/heads/main'
+        id: ecr-check
+        run: |
+          ECR_EXISTS=$(aws ecr describe-repositories --repository-names microservice-dev-app --region ap-south-1 --query 'repositories[0].repositoryName' --output text 2>/dev/null || echo "")
+          if [ -n "$ECR_EXISTS" ] && [ "$ECR_EXISTS" != "None" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "ECR repository already exists - will skip in Terraform"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "ECR repository does not exist - will create"
+          fi
+        working-directory: terraform
+
       - name: Terraform Apply
         if: steps.should-run.outputs.run == 'true' && github.ref == 'refs/heads/main'
-        run: terraform apply -auto-approve tfplan
+        run: |
+          if [ "${{ steps.ecr-check.outputs.exists }}" == "true" ]; then
+            echo "Skipping ECR creation - repository already exists"
+            terraform apply -auto-approve -target='!aws_ecr_repository.app' -target='!aws_ecr_lifecycle_policy.app' || terraform apply -auto-approve -refresh=true
+          else
+            terraform apply -auto-approve tfplan
+          fi
         working-directory: terraform
 
       - name: Output Infrastructure Details
@@ -165,7 +189,7 @@ jobs:
   build-and-push:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
-    needs: [check-changes, check-infrastructure, infrastructure]
+    needs: [check-changes, check-infrastructure]
     if: |
       github.ref == 'refs/heads/main' &&
       (needs.check-changes.outputs.app == 'true' ||

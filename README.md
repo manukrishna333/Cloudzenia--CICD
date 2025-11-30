@@ -147,6 +147,32 @@ When prompted, type `yes` to confirm destruction.
 
 **Note:** This will permanently delete all resources. Make sure you don't need them anymore.
 
+## Troubleshooting
+
+### Error: Resource Already Exists
+
+If you get errors like "RepositoryAlreadyExistsException" or "EntityAlreadyExists", the GitHub Actions workflow will automatically import existing resources into Terraform state. The workflow includes an import step that handles this automatically.
+
+**If running Terraform locally:**
+
+The workflow automatically imports existing resources. If running locally, you can manually import:
+
+```bash
+cd terraform
+terraform init
+
+# Import existing resources
+terraform import aws_ecr_repository.app microservice-dev-app
+terraform import aws_cloudwatch_log_group.app /ecs/microservice-dev-app
+terraform import aws_iam_role.ecs_task_execution microservice-dev-ecs-task-execution-role
+terraform import aws_iam_role.ecs_task microservice-dev-ecs-task-role
+
+# Then apply
+terraform apply
+```
+
+**Note:** The workflow will keep existing resources and manage them going forward. No need to delete and recreate.
+
 ## Access Your Service
 
 After deployment, get the public IP:
@@ -177,22 +203,7 @@ Edit `terraform/variables.tf` to change:
 - ECS task CPU/memory
 - Service desired count
 
-## Troubleshooting
 
-**Workflow fails:**
-- Check GitHub Secrets are set correctly
-- Verify AWS credentials have proper permissions
-- Check Actions logs for specific errors
-
-**Service not accessible:**
-- Verify ECS task is running (check AWS Console)
-- Check security group allows port 5000
-- Verify task has public IP assigned
-
-**Terraform errors:**
-- Ensure AWS credentials are configured
-- Check region is correct (ap-south-1)
-- Verify you have permissions to create resources
 
 ## AWS Resources Created
 

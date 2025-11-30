@@ -111,6 +111,26 @@ jobs:
         run: terraform init
         working-directory: terraform
 
+      - name: Import Existing Resources
+        if: steps.should-run.outputs.run == 'true'
+        continue-on-error: true
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          
+          # Import ECR repository if exists
+          terraform import aws_ecr_repository.app microservice-dev-app 2>/dev/null || echo "ECR repository not found or already in state"
+          
+          # Import CloudWatch log group if exists
+          terraform import aws_cloudwatch_log_group.app /ecs/microservice-dev-app 2>/dev/null || echo "CloudWatch log group not found or already in state"
+          
+          # Import IAM roles if exist
+          terraform import aws_iam_role.ecs_task_execution microservice-dev-ecs-task-execution-role 2>/dev/null || echo "IAM role ecs_task_execution not found or already in state"
+          terraform import aws_iam_role.ecs_task microservice-dev-ecs-task-role 2>/dev/null || echo "IAM role ecs_task not found or already in state"
+          
+          # Import IAM role policy attachment if exists
+          terraform import aws_iam_role_policy_attachment.ecs_task_execution "${ACCOUNT_ID}:role/microservice-dev-ecs-task-execution-role/arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy" 2>/dev/null || echo "IAM policy attachment not found or already in state"
+        working-directory: terraform
+
       - name: Terraform Validate
         if: steps.should-run.outputs.run == 'true'
         run: terraform validate

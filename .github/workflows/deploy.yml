@@ -130,8 +130,8 @@ jobs:
           # Delete ECS Cluster if exists
           aws ecs delete-cluster --cluster microservice-dev-cluster --region ap-south-1 2>/dev/null || echo "ECS cluster not found"
           
-          # Delete ECR Repository if exists
-          aws ecr delete-repository --repository-name microservice-dev-app --force --region ap-south-1 2>/dev/null || echo "ECR repository not found"
+          # Note: ECR repository is NOT deleted - we need it to push Docker images
+          # Terraform will recreate it if it doesn't exist
           
           # Delete CloudWatch Log Group if exists
           aws logs delete-log-group --log-group-name /ecs/microservice-dev-app --region ap-south-1 2>/dev/null || echo "CloudWatch log group not found"

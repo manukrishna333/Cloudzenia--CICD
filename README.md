@@ -151,27 +151,23 @@ When prompted, type `yes` to confirm destruction.
 
 ### Error: Resource Already Exists
 
-If you get errors like "RepositoryAlreadyExistsException" or "EntityAlreadyExists", the GitHub Actions workflow will automatically import existing resources into Terraform state. The workflow includes an import step that handles this automatically.
+If you get errors like "RepositoryAlreadyExistsException" or "EntityAlreadyExists", the GitHub Actions workflow will automatically delete existing resources before creating new ones. The workflow includes a cleanup step that handles this automatically.
 
 **If running Terraform locally:**
 
-The workflow automatically imports existing resources. If running locally, you can manually import:
+The workflow automatically cleans up existing resources. If running locally, you can manually delete them first:
 
 ```bash
 cd terraform
-terraform init
 
-# Import existing resources
-terraform import aws_ecr_repository.app microservice-dev-app
-terraform import aws_cloudwatch_log_group.app /ecs/microservice-dev-app
-terraform import aws_iam_role.ecs_task_execution microservice-dev-ecs-task-execution-role
-terraform import aws_iam_role.ecs_task microservice-dev-ecs-task-role
+# Delete existing resources
+./destroy-existing.sh
 
 # Then apply
 terraform apply
 ```
 
-**Note:** The workflow will keep existing resources and manage them going forward. No need to delete and recreate.
+**Note:** The workflow will remove existing resources and create fresh ones. This ensures a clean deployment every time.
 
 ## Access Your Service
 

@@ -111,25 +111,38 @@ jobs:
         run: terraform init
         working-directory: terraform
 
-      - name: Import Existing Resources
+      - name: Cleanup Existing Resources
         if: steps.should-run.outputs.run == 'true'
         continue-on-error: true
         run: |
-          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "Cleaning up existing resources before creating new ones..."
           
-          # Import ECR repository if exists
-          terraform import aws_ecr_repository.app microservice-dev-app 2>/dev/null || echo "ECR repository not found or already in state"
+          # Delete ECS Service if exists
+          aws ecs update-service --cluster microservice-dev-cluster --service microservice-dev-service --desired-count 0 --region ap-south-1 2>/dev/null || true
+          sleep 10
+          aws ecs delete-service --cluster microservice-dev-cluster --service microservice-dev-service --region ap-south-1 2>/dev/null || echo "ECS service not found"
           
-          # Import CloudWatch log group if exists
-          terraform import aws_cloudwatch_log_group.app /ecs/microservice-dev-app 2>/dev/null || echo "CloudWatch log group not found or already in state"
+          # Delete ECS Task Definitions
+          aws ecs list-task-definitions --family-prefix microservice-dev-app --region ap-south-1 --query 'taskDefinitionArns[]' --output text 2>/dev/null | tr '\t' '\n' | while read td; do
+            [ -n "$td" ] && aws ecs deregister-task-definition --task-definition "$td" --region ap-south-1 2>/dev/null || true
+          done || true
           
-          # Import IAM roles if exist
-          terraform import aws_iam_role.ecs_task_execution microservice-dev-ecs-task-execution-role 2>/dev/null || echo "IAM role ecs_task_execution not found or already in state"
-          terraform import aws_iam_role.ecs_task microservice-dev-ecs-task-role 2>/dev/null || echo "IAM role ecs_task not found or already in state"
+          # Delete ECS Cluster if exists
+          aws ecs delete-cluster --cluster microservice-dev-cluster --region ap-south-1 2>/dev/null || echo "ECS cluster not found"
           
-          # Import IAM role policy attachment if exists
-          terraform import aws_iam_role_policy_attachment.ecs_task_execution "${ACCOUNT_ID}:role/microservice-dev-ecs-task-execution-role/arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy" 2>/dev/null || echo "IAM policy attachment not found or already in state"
-        working-directory: terraform
+          # Delete ECR Repository if exists
+          aws ecr delete-repository --repository-name microservice-dev-app --force --region ap-south-1 2>/dev/null || echo "ECR repository not found"
+          
+          # Delete CloudWatch Log Group if exists
+          aws logs delete-log-group --log-group-name /ecs/microservice-dev-app --region ap-south-1 2>/dev/null || echo "CloudWatch log group not found"
+          
+          # Delete IAM Roles if exist
+          aws iam detach-role-policy --role-name microservice-dev-ecs-task-execution-role --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy --region ap-south-1 2>/dev/null || true
+          aws iam delete-role --role-name microservice-dev-ecs-task-execution-role --region ap-south-1 2>/dev/null || echo "IAM role ecs_task_execution not found"
+          aws iam delete-role --role-name microservice-dev-ecs-task-role --region ap-south-1 2>/dev/null || echo "IAM role ecs_task not found"
+          
+          echo "Cleanup completed. Waiting 10 seconds before creating resources..."
+          sleep 10
 
       - name: Terraform Validate
         if: steps.should-run.outputs.run == 'true'

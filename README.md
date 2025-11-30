@@ -171,22 +171,82 @@ terraform apply
 
 ## Access Your Service
 
-After deployment, get the public IP:
+After deployment, get the public IP and check status:
+
+**Option 1: Using the check script (Recommended)**
+
+```bash
+cd terraform
+./check-deployment.sh
+```
+
+This script will:
+- Check ECS cluster and service status
+- Get the public IP address
+- Test connectivity
+- Show access URL
+
+**Option 2: Manual check**
 
 ```bash
 # Get cluster name
-aws ecs list-clusters
+aws ecs list-clusters --region ap-south-1
 
 # Get running tasks
-aws ecs list-tasks --cluster microservice-dev-cluster
+aws ecs list-tasks --cluster microservice-dev-cluster --region ap-south-1
 
 # Get task details (including public IP)
-aws ecs describe-tasks --cluster microservice-dev-cluster --tasks <task-id>
+TASK_ARN=$(aws ecs list-tasks --cluster microservice-dev-cluster --region ap-south-1 --query 'taskArns[0]' --output text)
+aws ecs describe-tasks --cluster microservice-dev-cluster --tasks $TASK_ARN --region ap-south-1 --query 'tasks[0].attachments[0].details' --output json
+
+# Get public IP from network interface
+# (Use the networkInterfaceId from above)
+aws ec2 describe-network-interfaces --network-interface-ids <eni-id> --region ap-south-1 --query 'NetworkInterfaces[0].Association.PublicIp' --output text
 ```
 
-Or check AWS Console → ECS → Clusters → Tasks → Network tab
+**Option 3: AWS Console**
 
-Visit: `http://<public-ip>:5000`
+1. Go to AWS Console → ECS → Clusters → `microservice-dev-cluster`
+2. Click on the service → `microservice-dev-service`
+3. Click on the running task
+4. Go to "Network" tab → Find "Public IP"
+5. Visit: `http://<public-ip>:5000`
+
+## Troubleshooting Access Issues
+
+If you can't access the application:
+
+**1. Check if task is running:**
+```bash
+aws ecs describe-services --cluster microservice-dev-cluster --services microservice-dev-service --region ap-south-1 --query 'services[0].runningCount'
+```
+
+**2. Check task health:**
+```bash
+TASK_ARN=$(aws ecs list-tasks --cluster microservice-dev-cluster --region ap-south-1 --query 'taskArns[0]' --output text)
+aws ecs describe-tasks --cluster microservice-dev-cluster --tasks $TASK_ARN --region ap-south-1 --query 'tasks[0].healthStatus'
+```
+
+**3. Check CloudWatch logs:**
+```bash
+aws logs tail /ecs/microservice-dev-app --follow --region ap-south-1
+```
+
+**4. Verify security group:**
+- Security group should allow inbound TCP port 5000 from 0.0.0.0/0
+- Check: AWS Console → EC2 → Security Groups → `microservice-dev-ecs-tasks-sg`
+
+**5. Verify public IP:**
+- Task must be in public subnet
+- Task must have `assign_public_ip = true`
+- Check: AWS Console → ECS → Task → Network tab
+
+**6. Common issues:**
+- Task not running → Check CloudWatch logs for errors
+- Health check failing → Verify `/health` endpoint works
+- No public IP → Verify task is in public subnet
+- Connection timeout → Check security group rules
+- 502/503 errors → Application may not be ready, wait 1-2 minutes
 
 ## Configuration
 
